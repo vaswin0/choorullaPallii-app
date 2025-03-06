@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mosque Selection</title>
+</head>
+<body>
+    <h2>Mosque Selection App</h2>
+
+    <label>
+        <input type="radio" name="mode" value="view" checked> View Mode
+    </label>
+    <label>
+        <input type="radio" name="mode" value="add"> Add Mode
+    </label>
+
+    <h3>Select Date</h3>
+    <input type="date" id="dateSelect">
+
+    <h3>Select a Town</h3>
+    <select id="townSelect">
+        <option value="">-- Choose a Town --</option>
+    </select>
+
+    <h3>Select a Mosque</h3>
+    <select id="mosqueSelect">
+        <option value="">-- Choose a Mosque --</option>
+    </select>
+
+    <div id="viewMode">
+        <h3>Result</h3>
+        <p id="resultText">Select a mosque to see the data.</p>
+    </div>
+
+    <div id="addMode" style="display: none;">
+        <h3>Choose an Option</h3>
+        <button onclick="submitData('A')">A</button>
+        <button onclick="submitData('B')">B</button>
+        <button onclick="submitData('C')">C</button>
+    </div>
+
+    <script>
+        const GITHUB_BASE_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/mosque-data/main/town_data/";
+        let townData = {};
+
+        async function loadTowns() {
+            // Replace with actual town list fetching if stored separately
+            const towns = ["kochi", "trivandrum", "calicut"]; 
+            const select = document.getElementById("townSelect");
+            towns.forEach(town => {
+                const option = document.createElement("option");
+                option.value = town;
+                option.textContent = town.charAt(0).toUpperCase() + town.slice(1);
+                select.appendChild(option);
+            });
+        }
+
+        async function fetchMosques(town) {
+            const url = `${GITHUB_BASE_URL}${town}.json`;
+            try {
+                const response = await fetch(url);
+                const mosques = await response.json();
+                townData[town] = mosques;
+                displayMosques(mosques);
+            } catch (error) {
+                console.error("Error fetching mosques:", error);
+            }
+        }
+
+        function displayMosques(mosques) {
+            const select = document.getElementById("mosqueSelect");
+            select.innerHTML = '<option value="">-- Choose a Mosque --</option>';
+            mosques.forEach(mosque => {
+                const option = document.createElement("option");
+                option.value = mosque.name;
+                option.textContent = mosque.name;
+                select.appendChild(option);
+            });
+        }
+
+        function handleViewMode() {
+            const town = document.getElementById("townSelect").value;
+            const mosque = document.getElementById("mosqueSelect").value;
+            const date = document.getElementById("dateSelect").value;
+            
+            if (!town || !mosque || !date) return;
+
+            // Fetch stored data logic (use actual logic from GitHub or storage)
+            const storedData = {}; // Replace with actual fetch logic
+
+            const key = `${town}_${mosque}_${date}`;
+            document.getElementById("resultText").textContent =
+                storedData[key] ? `Selected Option: ${storedData[key]}` : "No data available.";
+        }
+
+        function submitData(option) {
+            const town = document.getElementById("townSelect").value;
+            const mosque = document.getElementById("mosqueSelect").value;
+            const date = document.getElementById("dateSelect").value;
+
+            if (!town || !mosque || !date) {
+                alert("Please select a date, town, and mosque.");
+                return;
+            }
+
+            alert(`Submitting: ${option} for ${mosque} on ${date}`);
+            // Here, you'd normally send the data to a server or GitHub update system
+        }
+
+        document.querySelectorAll('input[name="mode"]').forEach(input => {
+            input.addEventListener("change", function() {
+                document.getElementById("viewMode").style.display = this.value === "view" ? "block" : "none";
+                document.getElementById("addMode").style.display = this.value === "add" ? "block" : "none";
+            });
+        });
+
+        document.getElementById("townSelect").addEventListener("change", function() {
+            if (this.value) fetchMosques(this.value);
+        });
+
+        document.getElementById("mosqueSelect").addEventListener("change", handleViewMode);
+
+        loadTowns();
+    </script>
+</body>
+</html>
+
