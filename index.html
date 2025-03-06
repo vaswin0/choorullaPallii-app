@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mosque Selection</title>
+    <title>Choorulla Palli</title>
 </head>
 <body>
-    <h2>Mosque Selection App</h2>
+    <h2>Choorulla Pallii  App</h2>
 
     <label>
         <input type="radio" name="mode" value="view" checked> View Mode
@@ -19,10 +19,10 @@
     <input type="date" id="dateSelect">
 
     <h3>Select a Town</h3>
-    <select id="townSelect">
-        <option value="">-- Choose a Town --</option>
-    </select>
+    <input list="townList" id="townSelect" placeholder="Start typing a town name...">
+<datalist id="townList"></datalist>
 
+ 
     <h3>Select a Mosque</h3>
     <select id="mosqueSelect">
         <option value="">-- Choose a Mosque --</option>
@@ -35,26 +35,40 @@
 
     <div id="addMode" style="display: none;">
         <h3>Choose an Option</h3>
-        <button onclick="submitData('A')">A</button>
-        <button onclick="submitData('B')">B</button>
-        <button onclick="submitData('C')">C</button>
+        <button onclick="submitData('chooru  undu')">chooru undu</button>
+        <button onclick="submitData('chooru illa')">chooru illa</button>
+        
     </div>
 
     <script>
-        const GITHUB_BASE_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/mosque-data/main/town_data/";
+        const GITHUB_BASE_URL = "https://raw.githubusercontent.com/vaswin0/mosque-data/master/";
         let townData = {};
 
-        async function loadTowns() {
-            // Replace with actual town list fetching if stored separately
-            const towns = ["kochi", "trivandrum", "calicut"]; 
-            const select = document.getElementById("townSelect");
-            towns.forEach(town => {
-                const option = document.createElement("option");
-                option.value = town;
-                option.textContent = town.charAt(0).toUpperCase() + town.slice(1);
-                select.appendChild(option);
-            });
-        }
+async function loadTowns() {
+    const GITHUB_API_URL = "https://api.github.com/repos/vaswin0/mosque-data/contents/";
+    const townList = document.getElementById("townList");
+
+    try {
+        const response = await fetch(GITHUB_API_URL);
+        const files = await response.json();
+        
+        // Extract town names from JSON filenames
+        const towns = files
+            .filter(file => file.name.endsWith(".json")) // Only JSON files
+            .map(file => file.name.replace(".json", "")); // Remove ".json"
+
+        // Populate datalist
+        towns.forEach(town => {
+            const option = document.createElement("option");
+            option.value = town.charAt(0).toUpperCase() + town.slice(1);
+            townList.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("Error fetching town names:", error);
+    }
+}
+
 
         async function fetchMosques(town) {
             const url = `${GITHUB_BASE_URL}${town}.json`;
@@ -73,40 +87,74 @@
             select.innerHTML = '<option value="">-- Choose a Mosque --</option>';
             mosques.forEach(mosque => {
                 const option = document.createElement("option");
-                option.value = mosque.name;
-                option.textContent = mosque.name;
+                option.value = mosque.mosque;
+                option.textContent = mosque.mosque;
                 select.appendChild(option);
             });
         }
 
-        function handleViewMode() {
-            const town = document.getElementById("townSelect").value;
-            const mosque = document.getElementById("mosqueSelect").value;
-            const date = document.getElementById("dateSelect").value;
-            
-            if (!town || !mosque || !date) return;
+function handleAddMode() {
+    const town = document.getElementById("townSelect").value.toLowerCase();
+    const mosque = document.getElementById("mosqueSelect").value;
+    const date = document.getElementById("dateSelect").value;
+    const selectedOption = document.querySelector('input[name="option"]:checked')?.value;
 
-            // Fetch stored data logic (use actual logic from GitHub or storage)
-            const storedData = {}; // Replace with actual fetch logic
+    if (!town || !mosque || !date || !selectedOption) {
+        alert("Please select a town, mosque, date, and an option.");
+        return;
+    }
 
-            const key = `${town}_${mosque}_${date}`;
-            document.getElementById("resultText").textContent =
-                storedData[key] ? `Selected Option: ${storedData[key]}` : "No data available.";
+    const url = `${GITHUB_BASE_URL}${town}.json`;
+
+    fetch(url)
+        .then(response => response.json())
+        .catch(() => ({})) // If file does not exist, create empty object
+        .then(data => {
+            // Save new entry
+            data[`${mosque}_${date}`] = selectedOption;
+
+            // Convert data to JSON string
+            const updatedData = JSON.stringify(data, null, 2);
+
+            // Upload updated file to GitHub
+            uploadToGitHub(town, updatedData);
+        })
+        .catch(error => console.error("Error updating data:", error));
+}
+
+
+async function submitData(option) {
+    const town = document.getElementById("townSelect").value.toLowerCase();
+    const mosque = document.getElementById("mosqueSelect").value;
+    const date = document.getElementById("dateSelect").value;
+
+    if (!town || !mosque || !date) {
+        alert("Please select a date, town, and mosque.");
+        return;
+    }
+
+    // Step 1: Fetch the existing JSON file from GitHub
+    const fileUrl = `https://raw.githubusercontent.com/vaswin0/mosque-data/master/${town}.json`;
+    let townData = {};
+    try {
+        const response = await fetch(fileUrl);
+        if (response.ok) {
+            townData = await response.json();
         }
+    } catch (error) {
+        console.warn("No existing data found. Creating new file.");
+    }
 
-        function submitData(option) {
-            const town = document.getElementById("townSelect").value;
-            const mosque = document.getElementById("mosqueSelect").value;
-            const date = document.getElementById("dateSelect").value;
+    // Step 2: Update the data structure
+    if (!townData[mosque]) {
+        townData[mosque] = {};
+    }
+    townData[mosque][date] = option; // Save the selected option
 
-            if (!town || !mosque || !date) {
-                alert("Please select a date, town, and mosque.");
-                return;
-            }
+    // Step 3: Send the updated JSON to GitHub (NEXT STEP)
+    sendToGitHub(town, townData);
+}
 
-            alert(`Submitting: ${option} for ${mosque} on ${date}`);
-            // Here, you'd normally send the data to a server or GitHub update system
-        }
 
         document.querySelectorAll('input[name="mode"]').forEach(input => {
             input.addEventListener("change", function() {
@@ -115,9 +163,47 @@
             });
         });
 
-        document.getElementById("townSelect").addEventListener("change", function() {
-            if (this.value) fetchMosques(this.value);
-        });
+document.getElementById("townSelect").addEventListener("input", function() {
+    const townInput = this.value.toLowerCase();
+    
+    // Find the correct town name from the datalist
+    const selectedOption = [...townList.options].find(option => option.value.toLowerCase() === townInput);
+    
+    if (selectedOption) {
+        const town = selectedOption.value.toLowerCase(); // Ensure correct town name
+        fetchMosques(town);
+    }
+});
+
+async function sendToGitHub(town, updatedData) {
+    const issueTitle = `Update ${town}.json`;
+    const issueBody = `
+    **Automated Data Update**
+
+    **Town:** ${town}  
+    **Updated Data:**  
+    \`\`\`json
+    ${JSON.stringify(updatedData, null, 2)}
+    \`\`\`
+    
+    This issue was automatically created by the web app.
+    `;
+
+    await fetch("https://api.github.com/repos/vaswin0/mosque-data/issues", {
+        method: "POST",
+        headers: {
+            "Authorization": `token YOUR_PAT_HERE`, // DON'T DO THIS IN FRONTEND (use GitHub Actions)
+            "Accept": "application/vnd.github.v3+json"
+        },
+        body: JSON.stringify({
+            title: issueTitle,
+            body: issueBody
+        })
+    });
+
+    alert("Data submitted! It will be updated in a few minutes.");
+}
+
 
         document.getElementById("mosqueSelect").addEventListener("change", handleViewMode);
 
